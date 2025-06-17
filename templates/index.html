@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" data-bs-theme="light"> <!-- 指定語言與預設主題 -->
+<head>
+  <meta charset="UTF-8" />
+  <title>簡易記帳系統</title>
+
+  <!-- 載入 Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  
+  <!-- 載入自訂樣式 -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+
+  <!-- 載入 Chart.js 圖表繪製 -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- 載入 Bootstrap JavaScript（含 modal 功能） -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+<body>
+<div class="container my-4"> <!-- Bootstrap 容器，含內外邊距 -->
+
+  <!-- 主題切換（淺色 / 深色） -->
+  <div class="d-flex justify-content-end mb-3 align-items-center gap-2">
+    <label for="themeSelect" class="form-label m-0">主題：</label>
+    <select id="themeSelect" class="form-select form-select-sm w-auto">
+      <option value="light">淺色</option>
+      <option value="dark">深色</option>
+    </select>
+  </div>
+
+  <!-- Flash 訊息顯示區（如新增成功、刪除失敗等） -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="mt-2">
+      {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  {% endwith %}
+
+  <!-- 頁面標題 -->
+  <h1 class="text-center mb-4">簡易記帳系統</h1>
+
+  <!-- 區塊切換（記帳區 / 資料分析區） -->
+  <ul class="nav nav-tabs mb-3" id="mainTab" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="tab-record" data-bs-toggle="tab" data-bs-target="#recordSection" type="button" role="tab" aria-controls="recordSection" aria-selected="true">
+        記帳區
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="tab-analysis" data-bs-toggle="tab" data-bs-target="#analysisSection" type="button" role="tab" aria-controls="analysisSection" aria-selected="false">
+        資料分析區
+      </button>
+    </li>
+  </ul>
+<div class="tab-content" id="mainTabContent">
+  <div class="tab-pane fade show active" id="recordSection" role="tabpanel" aria-labelledby="tab-record">
+    
+    <!-- 月份選擇欄位 -->
+    <form method="get" action="/" class="d-flex justify-content-center mb-4 align-items-center gap-2">
+      <label for="dateInput" class="form-label mb-0">選擇月份：</label>
+      <input type="month" id="dateInput" name="month_select" class="form-control w-auto" style="max-width: 160px;" value="{{ year }}-{{ month }}">
+      <button type="submit" class="btn btn-primary">切換</button>
+    </form>
+
+    <!-- 匯出報表按鈕（隱藏欄位會由 JS 動態填入年份與月份） -->
+    <form id="exportForm" method="get" action="/export_csv" class="text-center mb-4">
+      <input type="hidden" name="year" id="exportYear">
+      <input type="hidden" name="month" id="exportMonth">
+      <button type="submit" class="btn btn-outline-success">匯出報表（CSV）</button>
+    </form>
+
+    <!-- 新增交易卡片 -->
+    <div class="card mb-4 shadow-sm border">
+      <div id="alert_add" class="mb-2"></div> <!-- 非同步新增時提示訊息容器 -->
+      <div class="card-header fw-bold bg-primary text-white">新增交易</div>
+      <div class="card-body">
+        <form id="addTransactionForm">
+          <div class="row g-3">
+
+            <!-- 交易類型（支出 or 收入） -->
+            <div class="col-md-3">
+              <label for="typeSelect" class="form-label">類型</label>
+              <select id="typeSelect" name="type" class="form-select" required>
+                <option value="" disabled>請選擇</option>
+                <option value="income">收入</option>
+                <option value="expense" selected>支出</option>
+              </select>
+            </div>
+
+            <!-- 以下為收入與支出的共用欄位（初始隱藏） -->
+            <div id="commonFields" class="col-md-3" style="display: none;">
+              <label for="transactionDate" class="form-label">日期</label>
+              <input type="date" id="transactionDate" name="date" class="form-control" required>
+            </div>
+
+            <div id="commonCategory" class="col-md-3" style="display: none;">
+              <label for="categoryField" class="form-label">類別</label>
+              <select id="categoryField" name="category" class="form-select" placeholder="選填">
+                <option value="">請選擇</option>
+              </select>
+            </div>
+
+            <div id="commonDesc" class="col-md-3" style="display: none;">
+              <label for="descriptionField" class="form-label">交易描述</label>
+              <input type="text" id="descriptionField" name="description" class="form-control" placeholder="選填">
+            </div>
+
+            <!-- 金額輸入與快捷按鈕 -->
+            <div id="commonAmount" class="col-md-3" style="display: none;">
+              <label for="amountField" class="form-label">金額</label>
+              <input type="number" id="amountField" name="amount" class="form-control" min="0" step="1" required >
+              <div id="amountButtons" class="mt-2 d-flex gap-2 flex-wrap" style="display: none;">
+                <button type="button" class="btn btn-outline-secondary btn-sm amount-btn" data-val="1">+1</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm amount-btn" data-val="10">+10</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm amount-btn" data-val="100">+100</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm amount-btn" data-val="1000">+1000</button>
+                <button type="button" class="btn btn-outline-warning btn-sm clear-btn">清除</button>
+              </div>
+            </div>
+
+            <!-- 以下為支出專用欄位（初始隱藏） -->
+            <div id="expenseFields" class="col-md-3" style="display: none;">
+              <label for="paymentMethod" class="form-label">付款方式</label>
+              <select id="paymentMethod" name="payment_method" class="form-select">
+                <option value="">請選擇</option>
+                <option>現金</option>
+                <option>信用卡</option>
+                <option>轉帳</option>
+                <option>Apple Pay</option>
+                <option>LINE Pay</option>
+              </select>
+            </div>
+
+            <div id="expenseTags" class="col-md-3" style="display: none;">
+              <label for="tagsField" class="form-label">標籤</label>
+              <input type="text" id="tagsField" name="tags" class="form-control">
+            </div>
+
+            <div id="expenseMood" class="col-md-3" style="display: none;">
+              <label for="moodField" class="form-label">心情</label>
+              <input type="text" id="moodField" name="mood" class="form-control" placeholder="選填">
+            </div>
+
+            <div id="expenseNeed" class="col-md-3" style="display: none;">
+              <label for="needOrWant" class="form-label">需要或想要</label>
+              <select id="needOrWant" name="need_or_want" class="form-select">
+                <option value="">請選擇</option>
+                <option value="need">需要</option>
+                <option value="want">想要</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- 提交按鈕 -->
+          <div class="mt-4">
+            <button type="submit" class="btn btn-success px-4">新增交易</button>
+          </div>
+        </form>
+      </div>
+    </div>
+      <!-- 收入支出顏色提示 -->
+      <div class="d-flex justify-content-center mb-3 gap-3">
+        <span><span class="badge bg-success">綠色</span> 表示收入</span>
+        <span><span class="badge bg-danger">紅色</span> 表示支出</span>
+      </div>
+
+      <!-- 編輯控制按鈕（顯示 / 隱藏編輯模式） -->
+      <section>
+        <div class="edit-buttons d-flex justify-content-end mb-3 gap-2">
+          <button type="button" class="btn btn-outline-primary btn-sm">編輯</button>
+          <button type="button" id="doneBtn" class="btn btn-secondary btn-sm" style="display: none;">完成</button>
+        </div>
+
+        <!-- 支出紀錄表 -->
+        <h2>支出</h2>
+        <div id="alert_expense" class="mb-2"></div>
+        <div class="transaction-container mb-4">
+          <table class="table table-striped table-bordered">
+            <thead>
+              <tr>
+                <th>日期</th><th>類別</th><th>交易描述</th><th>金額</th>
+                <th>付款方式</th><th>標籤</th><th>心情</th><th>想要/需要</th>
+              </tr>
+            </thead>
+            <tbody data-type="expense">
+              {% for e in expenses %}
+              <tr data-row-id="{{ e[0] }}" data-type="expense">
+                <!-- 每個欄位都含有顯示模式與編輯模式 -->
+                <td><span class="view-mode">{{ e[1] }}</span><input type="date" class="form-control edit-input d-none" value="{{ e[1] }}"></td>
+                <td><span class="view-mode">{{ e[2] }}</span><input type="text" class="form-control edit-input d-none" value="{{ e[2] }}"></td>
+                <td><span class="view-mode">{{ e[3] }}</span><input type="text" class="form-control edit-input d-none" value="{{ e[3] }}"></td>
+                <td class="expense"><span class="view-mode">{{ '%.2f'|format(e[4]) }}</span><input type="number" class="form-control edit-input d-none" value="{{ '%.2f'|format(e[4]) }}"></td>
+                <td><span class="view-mode">{{ e[5] }}</span><input type="text" class="form-control edit-input d-none" value="{{ e[5] }}"></td>
+                <td><span class="view-mode">{{ e[6] }}</span><input type="text" class="form-control edit-input d-none" value="{{ e[6] }}"></td>
+                <td><span class="view-mode">{{ e[7] }}</span><input type="text" class="form-control edit-input d-none" value="{{ e[7] }}"></td>
+                <td>
+                  <span class="view-mode">{{ e[8] }}</span>
+                  <select class="form-select edit-input d-none">
+                    <option value="">請選擇</option>
+                    <option value="need" {% if e[8]=='need' %}selected{% endif %}>Need</option>
+                    <option value="want" {% if e[8]=='want' %}selected{% endif %}>Want</option>
+                  </select>
+                  <!-- 儲存 / 刪除按鈕（僅在編輯模式中出現） -->
+                  <div class="d-flex justify-content-center gap-2 mt-2">
+                    <button type="button" class="btn btn-success btn-sm save-btn d-none">儲存</button>
+                    <button type="button" class="btn btn-danger btn-sm delete-btn d-none" data-row-id="{{ e[0] }}" data-type="expense">刪除</button>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 收入紀錄表（結構類似） -->
+        <h2>收入</h2>
+        <div id="alert_income" class="mb-2"></div>
+        <div class="transaction-container mb-4">
+          <table class="table table-striped table-bordered">
+            <thead>
+              <tr><th>日期</th><th>類別</th><th>交易描述</th><th>金額</th></tr>
+            </thead>
+            <tbody data-type="income">
+              {% for i in incomes %}
+              <tr data-row-id="{{ i[0] }}" data-type="income">
+                <td><span class="view-mode">{{ i[1] }}</span><input type="date" class="form-control edit-input d-none" value="{{ i[1] }}"></td>
+                <td><span class="view-mode">{{ i[2] }}</span><input type="text" class="form-control edit-input d-none" value="{{ i[2] }}"></td>
+                <td><span class="view-mode">{{ i[3] }}</span><input type="text" class="form-control edit-input d-none" value="{{ i[3] }}"></td>
+                <td class="income">
+                  <span class="view-mode">{{ '%.2f'|format(i[4]) }}</span>
+                  <input type="number" class="form-control edit-input d-none" value="{{ '%.2f'|format(i[4]) }}">
+                  <div class="d-flex justify-content-center gap-2 mt-2">
+                    <button type="button" class="btn btn-success btn-sm save-btn d-none">儲存</button>
+                    <button type="button" class="btn btn-danger btn-sm delete-btn d-none" data-row-id="{{ i[0] }}" data-type="income">刪除</button>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div> <!-- END recordSection -->
+
+    <!-- 資料分析區（4 張圖表） -->
+    <div class="tab-pane fade" id="analysisSection" role="tabpanel" aria-labelledby="tab-analysis">
+      <div class="container mb-4">
+        <div class="row g-3">
+          <!-- 每張圖表都放在 .chart-box 裡 -->
+          <div class="col-12 col-md-6">
+            <div class="chart-box">
+              <h5 class="text-center mb-3">本月總收支占比</h5>
+              <div class="chart-wrapper">
+                <canvas id="summaryPieChart"></canvas>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-md-6">
+            <div class="chart-box">
+              <h5 class="text-center mb-3">近六個月收支趨勢</h5>
+              <div class="chart-wrapper">
+                <canvas id="trendChart"></canvas>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-md-6">
+            <div class="chart-box">
+              <h5 class="text-center mb-3">支出類別分布</h5>
+              <div class="chart-wrapper">
+                <canvas id="expensePieChart"></canvas>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-md-6">
+            <div class="chart-box">
+              <h5 class="text-center mb-3">收入來源分布</h5>
+              <div class="chart-wrapper">
+                <canvas id="incomePieChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div> <!-- END analysisSection -->
+  </div> <!-- END tab-content -->
+</div> <!-- END container -->
+
+<!-- Bootstrap Modal：刪除確認視窗 -->
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="confirmDeleteModalLabel">確認刪除</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="關閉"></button>
+      </div>
+      <div class="modal-body">
+        你確定要刪除這筆交易嗎？此動作無法復原。
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-danger" id="confirmDeleteBtn">刪除</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- JavaScript 模組載入（使用 type="module" 支援 import/export） -->
+<script type="module" src="{{ url_for('static', filename='js/utils.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/chart.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/form.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/theme.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/edit_mode.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/edit_record.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/add_record.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/delete_record.js') }}"></script>
+
+</body>
+</html>

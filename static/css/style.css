@@ -1,0 +1,250 @@
+:root {
+    /* 淺色主題用的變數 */
+    --bg-color: #ffffff;
+    /* 頁面背景色 */
+    --text-color: #212529;
+    /* 主要文字顏色 */
+    --card-bg: #f8f9fa;
+    /* 卡片背景色 */
+    --table-header-bg: #dee2e6;
+    /* 表格標題列背景 */
+    --table-alt-bg: #f2f2f2;
+    /* 表格交錯列背景 */
+    --border-color: #ced4da;
+    /* 邊框顏色 */
+    --scrollbar-track: #f0f0f0;
+    /* 捲軸軌道背景 */
+    --scrollbar-thumb: #adb5bd;
+    /* 捲軸滑塊顏色 */
+    --btn-outline: #6c757d;
+    /* 外框按鈕邊框色 */
+    --btn-hover: #5c636a;
+    /* 外框按鈕 hover 色 */
+}
+
+[data-bs-theme="dark"] {
+    /* 深色主題用的變數 */
+    --bg-color: #121212;
+    --text-color: #e0e0e0;
+    --card-bg: #1e1e1e;
+    --table-header-bg: #2a2a2a;
+    --table-alt-bg: #1a1a1a;
+    --border-color: #444;
+    --scrollbar-track: #1c1c1c;
+    --scrollbar-thumb: #666;
+    --btn-outline: #999;
+    --btn-hover: #bbb;
+}
+
+
+/* ==============================
+   基本排版與主體設定
+============================== */
+body {
+    background-color: var(--bg-color);
+    /* 根據主題變色 */
+    color: var(--text-color);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 20px;
+}
+
+h1,
+h2,
+h3,
+h5 {
+    text-align: center;
+    color: var(--text-color);
+}
+
+label,
+.form-label,
+.nav-link {
+    color: var(--text-color);
+    /* 表單文字 / nav tab 標籤色統一 */
+}
+
+/* 移除預設邊框與陰影，避免出現白邊 */
+html,
+body {
+    border: 0;
+    outline: 0;
+    box-shadow: none !important;
+}
+
+
+/* ==============================
+   表格與資料區塊樣式
+============================== */
+.transaction-container {
+    max-height: 300px;
+    /* 限制高度可捲動 */
+    overflow-y: auto;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    padding: 10px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+table th,
+table td {
+    border: 1px solid var(--border-color);
+    background-color: var(--card-bg);
+    color: var(--text-color);
+    vertical-align: middle;
+    padding: 0.5rem;
+}
+
+table thead {
+    background-color: var(--table-header-bg);
+    color: var(--text-color);
+}
+
+table tbody tr:nth-child(even) {
+    background-color: var(--table-alt-bg);
+    /* 偶數列交錯底色 */
+}
+
+/* 維持顏色區分：收入 = 綠，支出 = 紅 */
+.income {
+    color: #28a745 !important;
+}
+
+.expense {
+    color: #dc3545 !important;
+}
+
+
+/* ==============================
+   表單與卡片樣式
+============================== */
+.card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+}
+
+.card-header {
+    background-color: #0d6efd;
+    /* Bootstrap 主藍色 */
+    color: #fff;
+}
+
+/* 表單欄位統一背景與邊框風格 */
+input[type="text"],
+input[type="date"],
+input[type="number"],
+select,
+textarea,
+.form-control {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+}
+
+.form-control:focus {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    border-color: var(--btn-outline);
+    box-shadow: none;
+}
+
+/* ==============================
+   滾動條樣式
+============================== */
+.transaction-container::-webkit-scrollbar {
+    width: 8px;
+    /* 捲軸寬度 */
+}
+
+.transaction-container::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+}
+
+.transaction-container::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+    border-radius: 10px;
+}
+
+
+/* ==============================
+   按鈕樣式
+============================== */
+.btn-outline-secondary,
+.btn-outline-primary,
+.btn-outline-warning,
+.btn-outline-success,
+.btn-outline-danger {
+    border-color: var(--btn-outline);
+    color: var(--text-color);
+}
+
+.btn-outline-secondary:hover,
+.btn-outline-primary:hover,
+.btn-outline-warning:hover,
+.btn-outline-success:hover,
+.btn-outline-danger:hover {
+    background-color: var(--btn-hover);
+    color: var(--text-color);
+}
+
+button.btn-close {
+    filter: brightness(0.8);
+    /* 關閉按鈕降低亮度，適合深色背景 */
+}
+
+/* ==============================
+   圖表區樣式
+============================== */
+/* 📊 圖表外框統一風格 */
+.chart-box {
+    background-color: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color-translucent);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    box-shadow: var(--bs-box-shadow-sm);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+/* 🖼️ 圖表內容區域 */
+.chart-wrapper {
+    flex-grow: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 360px;
+    /* 你可以調整高度統一，例如 400px */
+}
+
+/* 🎯 canvas 限制尺寸以符合容器 */
+.chart-wrapper canvas {
+    max-width: 100%;
+    max-height: 100%;
+}
+
+/* 📝 標題字體微調一致 */
+.chart-box h5 {
+    font-weight: bold;
+    font-size: 1.25rem;
+    color: var(--bs-heading-color, #212529);
+    text-align: center;
+}
+
+canvas {
+    background-color: transparent;
+}
+
+
+/* ==============================
+   編輯模式按鈕列
+============================== */
+.edit-buttons {
+    text-align: right;
+}
